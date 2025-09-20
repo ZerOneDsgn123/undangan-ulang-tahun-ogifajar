@@ -1250,26 +1250,6 @@
     pointer-events: none;
   }
 
-  /* Tombol fullscreen overlay (hanya untuk mobile) */
-#enterFsBtn {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 130px;
-  z-index: 9999;
-  background: linear-gradient(180deg,#ff6b8a,#ff3b6b);
-  color: #fff;
-  border: none;
-  padding: 12px 18px;
-  border-radius: 28px;
-  font-size: 16px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-  display: none; /* tampilkan hanya di mobile via media query */
-}
-@media (max-width:480px) {
-  #enterFsBtn { display: block; }
-}
-
 
 /* Untuk layar lebar (laptop/desktop) */
 @media (min-width: 420px) {
@@ -1625,66 +1605,55 @@
 </div>
 
 </div> <!-- .phone-frame -->
-<button id="enterFsBtn" aria-label="Masuk layar penuh">Buka Fullscreen</button>
-
-
 <script>
-  // Fullscreen helper (lebih robust)
-function enterFullScreen() {
-  const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
-  if (isIOS) {
-    // iOS tidak menggunakan Fullscreen API
-    document.getElementById('iosToast').classList.add('show');
-    setTimeout(()=> document.getElementById('iosToast').classList.remove('show'), 7000);
-    return;
+ function setVh(){ document.documentElement.style.setProperty('--vh',(window.innerHeight*0.01)+'px'); }
+setVh(); window.addEventListener('resize', setVh);
+
+function isIOS(){ return /iP(ad|hone|od)/.test(navigator.userAgent); }
+function isStandaloneMode(){
+  return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+}
+
+/* ====== Fullscreen (only on user gesture, no visible button) ====== */
+function enterFullScreen(){
+  // if iOS -> optional toast only (do nothing)
+  if (isIOS()) {
+    const t = document.getElementById('iosToast');
+    if (t) { t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),7000); }
+    return false;
   }
+  // if standalone (A2HS) -> already fullscreen-like, don't request
+  if (isStandaloneMode()) return false;
 
   const el = document.documentElement;
-  if (!el) return;
   const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-  if (req) {
-    try {
-      // panggil sesuai implementasi browser
-      if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-      else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-      else if (el.msRequestFullscreen) el.msRequestFullscreen();
-    } catch (err) {
-      console.warn('Fullscreen error', err);
-    }
+  if (!req) return false;
+  try {
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+    else if (el.msRequestFullscreen) el.msRequestFullscreen();
+    return true;
+  } catch (err){
+    console.warn('Fullscreen failed', err);
+    return false;
   }
 }
 
-// Pastikan event handler adalah langsung dari gesture pengguna (pointerdown lebih kompatibel)
-const enterBtn = document.getElementById('enterFsBtn');
 let triedFS = false;
-function onUserGesture(e) {
+function onFirstGesture(e){
   if (triedFS) return;
   triedFS = true;
-  enterFullScreen();
-  // sembunyikan tombol ketika dipencet
-  if (enterBtn) enterBtn.style.display = 'none';
-  // hapus listener global
-  document.removeEventListener('pointerdown', onUserGesture);
+  // only try if not already fullscreen & not standalone
+  if (!document.fullscreenElement && !isStandaloneMode()){
+    enterFullScreen();
+  }
+  // remove listener (we used {once:true} anyway)
 }
 
-// tombol yang jelas untuk user
-if (enterBtn) {
-  enterBtn.addEventListener('pointerdown', function(e){
-    e.preventDefault();
-    onUserGesture(e);
-  });
-}
-
-// cadangan: juga dengarkan gesture di seluruh dokumen (sekali saja)
-document.addEventListener('pointerdown', onUserGesture, { once: true });
-
-// OPTIONAL: update --vh untuk mengatasi address bar
-function setVh() {
-  document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
-}
-setVh();
-window.addEventListener('resize', setVh);
+// Listen to a real user gesture once (pointerdown is quite universal)
+document.addEventListener('pointerdown', onFirstGesture, { once: true });
 
 const sections = Array.from(document.querySelectorAll('.section')); // urutan: opening, acara, maps, rsvp, gift, thanks
 const navLinks = Array.from(document.querySelectorAll('.bottom-nav a'));
