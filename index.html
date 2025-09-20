@@ -191,8 +191,23 @@
     }
     .frame-top-left { top: -1px; left: -2px; }
     .frame-top-right { top: -1px; right: -2px; }
-    .frame-bottom-left { bottom: 1px; left: -2px; }
-    .frame-bottom-right { bottom: -2px; right: -2px; }
+    .frame-bottom-left {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: auto;     /* biar fleksibel */
+  max-width: 100%; /* jangan sampai keluar frame */
+  height: auto;
+}
+
+ .frame-bottom-right {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: auto;     /* biar fleksibel */
+  max-width: 100%; /* jangan sampai keluar frame */
+  height: auto;
+}
 
     .show-top-left { animation: slideFromTopLeft 0.8s forwards; }
     .show-top-right { animation: slideFromTopRight 0.8s forwards; }
@@ -219,7 +234,7 @@
     /* Floating Buttons */
 .floating-buttons {
   position: absolute;
-  bottom: 20px;
+  bottom: 60px;
   right: 20px;
   display: flex;
   flex-direction: column;
@@ -249,8 +264,11 @@
       .overlay h1 { font-size: 2.9rem; }
       .frame-top-left { width: 370px; }
       .frame-top-right { width: 370px; }
-      .frame-bottom-left { width: 370px; }
-      .frame-bottom-right { width: 370px; }
+       .frame-bottom-left {
+    width: 100%;   /* kalau mau full width bawah */
+    max-width: 500px; /* atau kasih batas maksimal */
+  }
+      .frame-bottom-right { width: 100%; max-width: 500px; }
     }
   </style>
 </head>
@@ -286,55 +304,74 @@
   </button>
 </div>
 
-<audio id="bg-music" autoplay loop playsinline>
-  <source src="sound/ulang-tahun.mp3" type="audio/mp3">
-  Browser kamu tidak mendukung audio.
+ <audio id="bg-music" loop>
+  <source src="ulang-tahun.mp3" type="audio/mp3">
+  Browser kamu tidak mendukung pemutar audio.
 </audio>
 </div>
 
   <script>
-     const audio = document.getElementById("bg-music");
-  const playBtn = document.querySelector(".circle-btn.play");
-  const volumeBtn = document.querySelector(".circle-btn.volume");
+document.addEventListener("DOMContentLoaded", () => {
+  const bgMusic = document.getElementById("bg-music");
+  const btns = document.querySelectorAll("button");
 
-  // coba auto play langsung
-  window.addEventListener("load", () => {
-    audio.play().catch(err => {
-      console.log("Autoplay gagal, nunggu interaksi user:", err);
-    });
-  });
-
-  // Play / Pause
-  playBtn.addEventListener("click", () => {
-    if (audio.paused) {
-      audio.play();
-      playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-    } else {
-      audio.pause();
-      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+  // === 1. Buka undangan => mulai musik ===
+  btns.forEach(btn => {
+    if (btn.innerText.includes("Mari Berselebrasi")) {
+      btn.addEventListener("click", () => {
+        if (bgMusic) {
+          bgMusic.muted = false;
+          bgMusic.play().catch(err => console.log("Autoplay gagal:", err));
+        }
+      });
     }
   });
 
-  // Volume Mute/Unmute
-  volumeBtn.addEventListener("click", () => {
-    audio.muted = !audio.muted;
-    volumeBtn.innerHTML = audio.muted
-      ? '<i class="fa-solid fa-volume-mute"></i>'
-      : '<i class="fa-solid fa-volume-up"></i>';
+  // === 2. Floating Buttons ===
+  const volumeBtn = document.querySelector(".circle-btn.volume i");
+  const playBtn = document.querySelector(".circle-btn.play i");
+
+  // Volume mute/unmute
+  document.querySelector(".circle-btn.volume").addEventListener("click", () => {
+    if (!bgMusic) return;
+    bgMusic.muted = !bgMusic.muted;
+    if (bgMusic.muted) {
+      volumeBtn.classList.remove("fa-volume-up");
+      volumeBtn.classList.add("fa-volume-mute");
+    } else {
+      volumeBtn.classList.remove("fa-volume-mute");
+      volumeBtn.classList.add("fa-volume-up");
+    }
   });
 
-   window.addEventListener("load", () => {
-      const topLeft = document.querySelector(".frame-top-left");
-      const topRight = document.querySelector(".frame-top-right");
-      const bottomLeft = document.querySelector(".frame-bottom-left");
-      const bottomRight = document.querySelector(".frame-bottom-right");
-
-      setTimeout(() => topLeft.classList.add("show-top-left"), 250);
-      setTimeout(() => topRight.classList.add("show-top-right"), 250);
-      setTimeout(() => bottomLeft.classList.add("show-bottom-left"), 250);
-      setTimeout(() => bottomRight.classList.add("show-bottom-right"), 250);
-
+  // Play/pause
+  document.querySelector(".circle-btn.play").addEventListener("click", () => {
+    if (!bgMusic) return;
+    if (bgMusic.paused) {
+      bgMusic.play().catch(err => console.log("Play gagal:", err));
+      playBtn.classList.remove("fa-play");
+      playBtn.classList.add("fa-pause");
+    } else {
+      bgMusic.pause();
+      playBtn.classList.remove("fa-pause");
+      playBtn.classList.add("fa-play");
+    }
   });
-  </script>
+});
+
+// === 3. Animasi frame dekorasi ===
+window.addEventListener("load", () => {
+  const topLeft = document.querySelector(".frame-top-left");
+  const topRight = document.querySelector(".frame-top-right");
+  const bottomLeft = document.querySelector(".frame-bottom-left");
+  const bottomRight = document.querySelector(".frame-bottom-right");
+
+  setTimeout(() => topLeft && topLeft.classList.add("show-top-left"), 250);
+  setTimeout(() => topRight && topRight.classList.add("show-top-right"), 250);
+  setTimeout(() => bottomLeft && bottomLeft.classList.add("show-bottom-left"), 250);
+  setTimeout(() => bottomRight && bottomRight.classList.add("show-bottom-right"), 250);
+});
+</script>
+
 </body>
 </html>
