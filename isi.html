@@ -35,6 +35,25 @@
         flex-direction: column;
     }
 
+ /* indicator kecil yang muncul di iOS untuk petunjuk fullscreen (Add to Home Screen) */
+    .ios-toast {
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 110px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      z-index: 9999;
+      font-size: 14px;
+      display: none;
+      max-width: 92%;
+      text-align: center;
+    }
+
+    .ios-toast.show { display: block; }
+
     .section {
         display: none;
         flex: 1;
@@ -1599,6 +1618,9 @@
 
 </div> <!-- .phone-frame -->
 
+<!-- iOS hint toast -->
+<div id="iosToast" class="ios-toast">Untuk fullscreen di iPhone, tambahkan halaman ini ke Layar Utama (Share → Add to Home Screen).</div>
+
 <script>
 const sections = Array.from(document.querySelectorAll('.section')); // urutan: opening, acara, maps, rsvp, gift, thanks
 const navLinks = Array.from(document.querySelectorAll('.bottom-nav a'));
@@ -1968,6 +1990,69 @@ volumeBtn.addEventListener("click", () => {
     : `<i class="fas fa-volume-mute"></i>`;
   isMuted = !isMuted;
 });
+
+function enterFullScreen() {
+  const el = document.documentElement; // seluruh halaman
+  if (!el) return;
+
+  // Jika user agent iOS (Safari mobile) — tidak support Fullscreen API
+  const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
+  if (isIOS) {
+    // tampilkan pesan singkat petunjuk Add to Home Screen
+    const t = document.getElementById('iosToast');
+    if (t) {
+      t.classList.add('show');
+      setTimeout(()=> t.classList.remove('show'), 8000);
+    }
+    return false;
+  }
+
+  const request = el.requestFullscreen 
+               || el.webkitRequestFullscreen 
+               || el.mozRequestFullScreen 
+               || el.msRequestFullscreen;
+
+  if (request) {
+    try {
+      // beberapa browser butuh pemanggilan via function.call
+      if (el.requestFullscreen) {
+        el.requestFullscreen();
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      } else if (el.mozRequestFullScreen) {
+        el.mozRequestFullScreen();
+      } else if (el.msRequestFullscreen) {
+        el.msRequestFullscreen();
+      }
+      return true;
+    } catch (err) {
+      console.warn('Fullscreen failed:', err);
+      return false;
+    }
+  }
+  return false;
+}
+
+/* Panggil enterFullScreen hanya sekali, pada interaksi pertama pengguna.
+   Ini untuk memastikan browser menganggapnya sebagai "user gesture" sehingga diizinkan. */
+let fullTried = false;
+function tryEnterOnce(e) {
+  if (fullTried) return;
+  // hanya trigger bila event adalah click/touch yang nyata
+  fullTried = true;
+  enterFullScreen();
+  // hapus listener setelah dipanggil
+  document.removeEventListener('touchend', tryEnterOnce);
+  document.removeEventListener('click', tryEnterOnce);
+}
+
+// pasang listener 'user gesture' (touchend untuk mobile, click sebagai fallback)
+document.addEventListener('touchend', tryEnterOnce, {passive: true});
+document.addEventListener('click', tryEnterOnce);
+
+/* Jika mau memaksa fullscreen saat menekan tombol tertentu, bisa panggil enterFullScreen()
+   contoh: document.getElementById('openRsvpForm').addEventListener('click', enterFullScreen);
+*/
 
 if (performance.getEntriesByType("navigation")[0].type === "reload") { window.location.href = "index.html"; }
 </script>
