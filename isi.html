@@ -41,25 +41,6 @@
     border-radius: 6px; /* sedikit rounded supaya mirip app */
   }
 
-   /* iOS toast when fullscreen not supported */
-  .ios-toast {
-    position: fixed;
-    left:50%;
-    transform: translateX(-50%);
-    bottom: 110px;
-    background: rgba(0,0,0,0.75);
-    color:#fff;
-    padding:10px 14px;
-    border-radius:12px;
-    z-index:9999;
-    font-size:14px;
-    text-align:center;
-    display:none;
-    max-width:92%;
-  }
-  .ios-toast.show { display:block; }
-
-
     .section {
         display: none;
         flex: 1;
@@ -1269,6 +1250,27 @@
     pointer-events: none;
   }
 
+  /* Tombol fullscreen overlay (hanya untuk mobile) */
+#enterFsBtn {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 130px;
+  z-index: 9999;
+  background: linear-gradient(180deg,#ff6b8a,#ff3b6b);
+  color: #fff;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 28px;
+  font-size: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  display: none; /* tampilkan hanya di mobile via media query */
+}
+@media (max-width:480px) {
+  #enterFsBtn { display: block; }
+}
+
+
 /* Untuk layar lebar (laptop/desktop) */
 @media (min-width: 420px) {
   .floating-controls {
@@ -1279,7 +1281,6 @@
 }
 
      @media (max-width: 420px) {
-      .phone-frame { border-radius:0; } /* full edge on mobile */
       .overlay h2 { font-size: 1.5rem; }
       .overlay h1 { font-size: 1.5rem; }
        .rsvp-avatar { width: 190px; height: 190px; border-width:5px; }
@@ -1320,20 +1321,14 @@
 @media (max-width:420px){
   .rsvp-modal-content { padding:16px; }
   .whatsapp-input select { flex: 0 0 30%; }
-
-   /* ensure iframe/map etc fit */
-  iframe { width:100%; border:0; }
-
-  /* little spacing so content isn't hidden behind nav */
-  .content-bottom-space { padding-bottom:78px; } /* supaya konten tidak tertutup nav */
 }
-
 
 </style>
 </head>
 <body>
 
-<div class="phone-frame" id="appFrame">
+<div class="phone-frame">
+
   <section id="opening" class="section opening-section">
      <div class="opening-container">
     <div class="opening">
@@ -1630,53 +1625,66 @@
 </div>
 
 </div> <!-- .phone-frame -->
+<button id="enterFsBtn" aria-label="Masuk layar penuh">Buka Fullscreen</button>
+
 
 <script>
-  function setVh() {
-    document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+  // Fullscreen helper (lebih robust)
+function enterFullScreen() {
+  const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
+  if (isIOS) {
+    // iOS tidak menggunakan Fullscreen API
+    document.getElementById('iosToast').classList.add('show');
+    setTimeout(()=> document.getElementById('iosToast').classList.remove('show'), 7000);
+    return;
   }
-  setVh();
-  window.addEventListener('resize', setVh);
 
-  /* ==========================
-     -- Fullscreen logic --
-     ========================== */
-  function enterFullScreen() {
-    const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
-    if (isIOS) {
-      document.getElementById('iosToast').classList.add('show');
-      setTimeout(()=> document.getElementById('iosToast').classList.remove('show'), 7000);
-      return false;
+  const el = document.documentElement;
+  if (!el) return;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+  if (req) {
+    try {
+      // panggil sesuai implementasi browser
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();
+    } catch (err) {
+      console.warn('Fullscreen error', err);
     }
-
-    const el = document.documentElement;
-    const request = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-    if (request) {
-      try {
-        if (el.requestFullscreen) el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-        else if (el.msRequestFullscreen) el.msRequestFullscreen();
-        return true;
-      } catch (err) {
-        console.warn('Fullscreen failed:', err);
-        return false;
-      }
-    }
-    return false;
   }
+}
 
-  // trigger fullscreen only once on first real user gesture
-  let fullTried = false;
-  function tryEnterOnce(e) {
-    if (fullTried) return;
-    fullTried = true;
-    enterFullScreen();
-    document.removeEventListener('touchend', tryEnterOnce);
-    document.removeEventListener('click', tryEnterOnce);
-  }
-  document.addEventListener('touchend', tryEnterOnce, {passive:true});
-  document.addEventListener('click', tryEnterOnce);
+// Pastikan event handler adalah langsung dari gesture pengguna (pointerdown lebih kompatibel)
+const enterBtn = document.getElementById('enterFsBtn');
+let triedFS = false;
+function onUserGesture(e) {
+  if (triedFS) return;
+  triedFS = true;
+  enterFullScreen();
+  // sembunyikan tombol ketika dipencet
+  if (enterBtn) enterBtn.style.display = 'none';
+  // hapus listener global
+  document.removeEventListener('pointerdown', onUserGesture);
+}
+
+// tombol yang jelas untuk user
+if (enterBtn) {
+  enterBtn.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    onUserGesture(e);
+  });
+}
+
+// cadangan: juga dengarkan gesture di seluruh dokumen (sekali saja)
+document.addEventListener('pointerdown', onUserGesture, { once: true });
+
+// OPTIONAL: update --vh untuk mengatasi address bar
+function setVh() {
+  document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+}
+setVh();
+window.addEventListener('resize', setVh);
 
 const sections = Array.from(document.querySelectorAll('.section')); // urutan: opening, acara, maps, rsvp, gift, thanks
 const navLinks = Array.from(document.querySelectorAll('.bottom-nav a'));
