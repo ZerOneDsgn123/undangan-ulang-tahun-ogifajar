@@ -36,38 +36,6 @@
       display: block;
     }
 
-    #fsPrompt {
-      position: absolute;
-      inset: 0;
-      display: none; /* shown when needed */
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-      background: rgba(0,0,0,0.45);
-      color: #fff;
-      text-align: center;
-      padding: 20px;
-    }
-    #fsPrompt .box {
-      background: rgba(255,255,255,0.06);
-      padding: 14px 18px;
-      border-radius: 12px;
-      backdrop-filter: blur(4px);
-      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-      font-weight:700;
-    }
-    #fsPrompt .hint { font-size:14px; margin-top:8px; opacity:0.95; }
-    #fsPrompt button {
-      margin-top:12px;
-      padding:10px 14px;
-      border-radius:10px;
-      border:none;
-      background:#1e90ff;
-      color:#fff;
-      font-weight:700;
-      cursor:pointer;
-    }
-    
     .overlay {
       position: absolute;
       top: 0; left: 0;
@@ -234,7 +202,7 @@
 
  .frame-bottom-right {
   position: absolute;
-  right: 0;
+  left: 0;
   bottom: 0;
   width: auto;     /* biar fleksibel */
   max-width: 100%; /* jangan sampai keluar frame */
@@ -299,8 +267,9 @@
        .frame-bottom-left {
     width: 100%;   /* kalau mau full width bawah */
     max-width: 500px; /* atau kasih batas maksimal */
+    bottom: 15px;
   }
-      .frame-bottom-right { width: 100%; max-width: 500px; }
+      .frame-bottom-right { width: 100%; max-width: 500px; bottom: 15px; }
     }
   </style>
 </head>
@@ -340,31 +309,9 @@
   <source src="ulang-tahun.mp3" type="audio/mp3">
   Browser kamu tidak mendukung pemutar audio.
 </audio>
-
-  <!-- prompt shown when automatic fullscreen fails -->
-    <div id="fsPrompt" role="dialog" aria-hidden="true">
-      <div class="box">
-        Ketuk untuk masuk full-screen & mulai musik
-        <div class="hint">Jika ini tidak berhasil di iPhone/iPad, gunakan tombol browser (F11) atau buka sebagai PWA.</div>
-        <button id="fsGo">Ketuk untuk Fullscreen</button>
-      </div>
-    </div>
 </div>
 
   <script>
-// Standardized requestFullscreen that returns a Promise when possible
-  function requestFullscreen(el = document.documentElement) {
-    if (el.requestFullscreen) return el.requestFullscreen();
-    if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
-    if (el.mozRequestFullScreen) return el.mozRequestFullScreen();
-    if (el.msRequestFullscreen) return el.msRequestFullscreen();
-    return Promise.reject(new Error('Fullscreen API tidak tersedia'));
-  }
-
-  function isFullscreen() {
-    return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-  }
-
 document.addEventListener("DOMContentLoaded", () => {
   const bgMusic = document.getElementById("bg-music");
   const btns = document.querySelectorAll("button");
@@ -381,8 +328,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-
-  
   // === 2. Floating Buttons ===
   const volumeBtn = document.querySelector(".circle-btn.volume i");
   const playBtn = document.querySelector(".circle-btn.play i");
