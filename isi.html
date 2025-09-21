@@ -1222,24 +1222,16 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  z-index: 20;
+    z-index: 9999 !important;   /* pastikan di atas semua */
 }
 
-/* Style tombol */
-.circle-btn {
-  width: 55px;
-  height: 55px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(51,150,211,0.9);
-  color: #fff;
-  font-size: 22px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-  cursor: pointer;
+.floating-controls .circle-btn {
+  pointer-events: auto;
+  z-index: 100000;
+  width:55px; height:55px; border-radius:50%; border:none;
+  background: rgba(51,150,211,0.95); color:#fff; font-size:18px;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(0,0,0,0.25);
 }
-.circle-btn:active {
-  transform: scale(0.9);
-} 
 
 .frame-img {
     position: absolute;
@@ -1589,71 +1581,195 @@
   </a>
 </nav>
 
-<audio id="bg-music" autoplay loop>
-  <source src="sound/ulang-tahun.mp3" type="audio/mp3">
+<audio id="bg-music" playsinline preload="auto" loop muted>
+  <source src="ulang-tahun.mp3" type="audio/mp3">
   Browser kamu tidak mendukung audio.
 </audio>
 
 <!-- Floating Buttons -->
-<div class="floating-controls">
-  <button id="playPauseBtn" class="circle-btn">
-    <i class="fas fa-pause"></i>
+<div class="floating-controls" aria-hidden="false">
+  <button id="playPauseBtn" class="circle-btn" aria-label="Play / Pause" title="Play / Pause">
+    <i class="fas fa-play"></i>
   </button>
-  <button id="volumeBtn" class="circle-btn">
-    <i class="fas fa-volume-up"></i>
+  <button id="volumeBtn" class="circle-btn" aria-label="Mute / Unmute" title="Mute / Unmute">
+    <i class="fas fa-volume-mute"></i>
   </button>
 </div>
 </div> <!-- .phone-frame -->
 
 <script>
  function setVh(){ document.documentElement.style.setProperty('--vh',(window.innerHeight*0.01)+'px'); }
-setVh(); window.addEventListener('resize', setVh);
+ setVh(); window.addEventListener('resize', setVh);
 
-function isIOS(){ return /iP(ad|hone|od)/.test(navigator.userAgent); }
-function isStandaloneMode(){
-  return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
-    || window.navigator.standalone === true;
-}
+ // existing helper functions (fullscreen etc.) kept as-is
+ function isIOS(){ return /iP(ad|hone|od)/.test(navigator.userAgent); }
+ function isStandaloneMode(){
+   return window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+     || window.navigator.standalone === true;
+ }
+ function enterFullScreen(){
+   if (isIOS()) return false;
+   if (isStandaloneMode()) return false;
+   const el = document.documentElement;
+   const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+   if (!req) return false;
+   try {
+     if (el.requestFullscreen) el.requestFullscreen();
+     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+     else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+     else if (el.msRequestFullscreen) el.msRequestFullscreen();
+     return true;
+   } catch (err){
+     console.warn('Fullscreen failed', err);
+     return false;
+   }
+ }
+ let triedFS = false;
+ function onFirstGesture(e){
+   if (triedFS) return;
+   triedFS = true;
+   if (!document.fullscreenElement && !isStandaloneMode()){
+     enterFullScreen();
+   }
+ }
+ document.addEventListener('pointerdown', onFirstGesture, { once: true });
 
-/* ====== Fullscreen (only on user gesture, no visible button) ====== */
-function enterFullScreen(){
-  // if iOS -> optional toast only (do nothing)
-  if (isIOS()) {
-    const t = document.getElementById('iosToast');
-    if (t) { t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),7000); }
-    return false;
+  document.addEventListener('DOMContentLoaded', () => {
+  const bg = document.getElementById('bg-music');
+  const playBtn = document.getElementById('playPauseBtn');
+  const volBtn = document.getElementById('volumeBtn');
+  const starter = document.getElementById('audioStarterInner');
+
+  if (!bg || !playBtn || !volBtn) {
+    console.warn('Audio/tombol tidak ditemukan');
+    return;
   }
-  // if standalone (A2HS) -> already fullscreen-like, don't request
-  if (isStandaloneMode()) return false;
 
-  const el = document.documentElement;
-  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-  if (!req) return false;
-  try {
-    if (el.requestFullscreen) el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-    else if (el.msRequestFullscreen) el.msRequestFullscreen();
-    return true;
-  } catch (err){
-    console.warn('Fullscreen failed', err);
-    return false;
+  const ICON = {
+    play: '<i class="fas fa-play"></i>',
+    pause: '<i class="fas fa-pause"></i>',
+    volOn: '<i class="fas fa-volume-up"></i>',
+    volOff: '<i class="fas fa-volume-mute"></i>'
+  };
+
+  // Start muted so browser allows autoplay
+  bg.muted = true;
+  bg.preload = 'auto';
+  bg.loop = true;
+
+  // Try autoplay (muted)
+  bg.play().then(() => {
+    // autoplay succeeded (muted) => show pause icon because it's playing (muted)
+    playBtn.innerHTML = ICON.pause;
+    volBtn.innerHTML = ICON.volOff;
+    // Show overlay only if user hasn't unmuted later
+    // We'll reveal overlay only if the audio is effectively muted (so user must tap)
+    if (bg.muted) {
+      showStarter(); // prompt user to tap to hear audio
+    }
+  }).catch(err => {
+    // Play failed — we must prompt user to tap
+    console.warn('Autoplay (muted) gagal atau diblok:', err);
+    playBtn.innerHTML = ICON.play;
+    volBtn.innerHTML = ICON.volOff;
+    showStarter();
+  });
+
+  // show overlay prompt
+  function showStarter() {
+    starter.style.display = 'block';
+    starter.parentElement.style.pointerEvents = 'auto';
+    starter.parentElement.setAttribute('aria-hidden', 'false');
   }
-}
-
-let triedFS = false;
-function onFirstGesture(e){
-  if (triedFS) return;
-  triedFS = true;
-  // only try if not already fullscreen & not standalone
-  if (!document.fullscreenElement && !isStandaloneMode()){
-    enterFullScreen();
+  function hideStarter() {
+    starter.style.display = 'none';
+    starter.parentElement.style.pointerEvents = 'none';
+    starter.parentElement.setAttribute('aria-hidden', 'true');
   }
-  // remove listener (we used {once:true} anyway)
-}
 
-// Listen to a real user gesture once (pointerdown is quite universal)
-document.addEventListener('pointerdown', onFirstGesture, { once: true });
+  // If user taps anywhere (pointerdown), try unmute & play — single shot
+  function onFirstUserGesture() {
+    // remove listener (only once)
+    document.removeEventListener('pointerdown', onFirstUserGesture);
+    // unmute and play
+    if (bg.muted) bg.muted = false;
+    bg.play().then(() => {
+      playBtn.innerHTML = ICON.pause;
+      volBtn.innerHTML = ICON.volOn;
+      hideStarter();
+    }).catch(err => {
+      console.warn('Play setelah gesture gagal:', err);
+      // still hide starter so user can use explicit buttons
+      // but keep muted state if it failed
+      hideStarter();
+    });
+  }
+  document.addEventListener('pointerdown', onFirstUserGesture, { once: true, passive: true });
+
+  // Play/pause button behavior
+  playBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // If paused, treat click as an explicit user gesture: unmute + play
+    if (bg.paused) {
+      if (bg.muted) bg.muted = false;
+      bg.play().then(() => {
+        playBtn.innerHTML = ICON.pause;
+        volBtn.innerHTML = ICON.volOn;
+        hideStarter();
+      }).catch(err => {
+        console.warn('Play gagal pada tombol:', err);
+      });
+    } else {
+      bg.pause();
+      playBtn.innerHTML = ICON.play;
+    }
+  });
+
+  // Volume toggle (mute/unmute)
+  volBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    bg.muted = !bg.muted;
+    volBtn.innerHTML = bg.muted ? ICON.volOff : ICON.volOn;
+
+    // If user unmuted and audio was paused, try play (explicit gesture)
+    if (!bg.muted && bg.paused) {
+      bg.play().then(() => {
+        playBtn.innerHTML = ICON.pause;
+        hideStarter();
+      }).catch(err => {
+        console.warn('Play setelah unmute gagal:', err);
+      });
+    }
+  });
+
+  // keyboard support
+  [playBtn, volBtn].forEach(btn => {
+    btn.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        btn.click();
+      }
+    });
+  });
+
+  // If user already interacted with the page earlier (focus/click), and bg is muted & paused,
+  // remove starter when they click the starter block itself.
+  starter.parentElement.addEventListener('click', (e) => {
+    // simulate the first user gesture behaviour
+    onFirstUserGesture();
+  });
+
+  // Safety: reflect state when audio ends/plays/pauses (keep icons in sync)
+  bg.addEventListener('play', () => {
+    playBtn.innerHTML = ICON.pause;
+  });
+  bg.addEventListener('pause', () => {
+    playBtn.innerHTML = ICON.play;
+  });
+  bg.addEventListener('volumechange', () => {
+    volBtn.innerHTML = bg.muted ? ICON.volOff : ICON.volOn;
+  });
+});
 
 const sections = Array.from(document.querySelectorAll('.section')); // urutan: opening, acara, maps, rsvp, gift, thanks
 const navLinks = Array.from(document.querySelectorAll('.bottom-nav a'));
@@ -1998,31 +2114,6 @@ document.addEventListener('DOMContentLoaded', () => {
     animateSectionFrames(currentIndex);
 });
 
- const bgMusic = document.getElementById("bg-music");
-const playPauseBtn = document.getElementById("playPauseBtn");
-const volumeBtn = document.getElementById("volumeBtn");
-
-let isPlaying = true;
-
-playPauseBtn.addEventListener("click", () => {
-  if (isPlaying) {
-    bgMusic.pause();
-    playPauseBtn.innerHTML = `<i class="fas fa-play"></i>`;
-  } else {
-    bgMusic.play();
-    playPauseBtn.innerHTML = `<i class="fas fa-pause"></i>`;
-  }
-  isPlaying = !isPlaying;
-});
-
-let isMuted = false;
-volumeBtn.addEventListener("click", () => {
-  bgMusic.muted = !isMuted;
-  volumeBtn.innerHTML = isMuted 
-    ? `<i class="fas fa-volume-up"></i>` 
-    : `<i class="fas fa-volume-mute"></i>`;
-  isMuted = !isMuted;
-});
 
 if (performance.getEntriesByType("navigation")[0].type === "reload") { window.location.href = "index.html"; }
 </script>
