@@ -185,29 +185,14 @@
     /* Bingkai Dekorasi */
     .frame-img {
       position: absolute;
-      width: 390px;
+      width: 450px;
       opacity: 0;
       z-index: 3;
     }
     .frame-top-left { top: -1px; left: -2px; }
     .frame-top-right { top: -1px; right: -2px; }
-    .frame-bottom-left {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: auto;     /* biar fleksibel */
-  max-width: 100%; /* jangan sampai keluar frame */
-  height: auto;
-}
-
- .frame-bottom-right {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: auto;     /* biar fleksibel */
-  max-width: 100%; /* jangan sampai keluar frame */
-  height: auto;
-}
+    .frame-bottom-left { bottom: 3px; left: -1px}
+    .frame-bottom-right { bottom: 3px; right: -2px}
 
     .show-top-left { animation: slideFromTopLeft 0.8s forwards; }
     .show-top-right { animation: slideFromTopRight 0.8s forwards; }
