@@ -311,6 +311,40 @@
 </div>
 
   <script>
+
+    function requestFullscreen(el = document.documentElement) {
+      const request = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if (!request) return false;
+      try {
+        request.call(el);
+        return true;
+      } catch (err) {
+        console.warn('Fullscreen request rejected:', err);
+        return false;
+      }
+    }
+
+    // --- Check if already fullscreen ---
+    function isFullscreen() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    }
+
+    // --- Try to enter fullscreen on load, then fallback to first user gesture ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // Attempt immediately
+      const ok = requestFullscreen();
+      if (!ok) {
+        // If immediate attempt not allowed, try again on first user gesture (tap/click)
+        const tryOnGesture = function onfirst() {
+          // if already fullscreen (maybe user pressed F11), skip
+          if (!isFullscreen()) requestFullscreen();
+          document.removeEventListener('pointerdown', onfirst);
+        };
+        // use named function to allow removal
+        function onfirst(e) { if (!isFullscreen()) requestFullscreen(); document.removeEventListener('pointerdown', onfirst); }
+        document.addEventListener('pointerdown', onfirst, { once: true, passive: true });
+      }
+    })
 document.addEventListener("DOMContentLoaded", () => {
   const bgMusic = document.getElementById("bg-music");
   const btns = document.querySelectorAll("button");
